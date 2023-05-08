@@ -2,6 +2,10 @@
 
 This is a Go client for the Aria2 JSON-RPC interface, providing a way to interact with the Aria2 download manager programmatically.
 
+> **Note:** This library is still in development and is not yet ready for production use.
+
+> websocket is not supported yet. WIP
+
 ## Installation
 
 To install the package, run:
