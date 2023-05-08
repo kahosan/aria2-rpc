@@ -1,4 +1,4 @@
-package opts
+package ario
 
 // source: https://github.com/siku2/arigo/blob/main/options.go
 // thanks to siku2

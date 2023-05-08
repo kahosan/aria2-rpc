@@ -38,7 +38,7 @@ if err != nil {
 }
 
 // if you want to add an option 
-opts := client.Options
+opts := ario.Options{}
 opts.Dir = "/path/to/dir"
 gid, err := client.AddURI([]string{"http://example.com/file.txt"}, &opts)
 
@@ -48,7 +48,7 @@ if err != nil {
     // handle error
 }
 
-opts := client.Options
+opts := ario.Options{}
 opts.Dir = "/path/to/dir"
 err := client.changeOption(gid, &opts)
 

@@ -5,15 +5,13 @@ import (
 	"reflect"
 
 	"github.com/kahosan/aria2-rpc/internal/caller"
-	"github.com/kahosan/aria2-rpc/internal/opts"
 	"github.com/kahosan/aria2-rpc/internal/resp"
 )
 
 type Client struct {
-	call    func(method string, params, reply any) error
-	close   func() error
-	token   string
-	Options opts.Options
+	call  func(method string, params, reply any) error
+	close func() error
+	token string
 }
 
 func NewClient(host string, token string) (*Client, error) {
@@ -23,10 +21,9 @@ func NewClient(host string, token string) (*Client, error) {
 	}
 
 	return &Client{
-		call:    c.Call,
-		close:   c.Close,
-		token:   token,
-		Options: opts.Options{},
+		call:  c.Call,
+		close: c.Close,
+		token: token,
 	}, nil
 }
 
@@ -34,18 +31,18 @@ func (c *Client) Close() error {
 	return c.close()
 }
 
-func (c *Client) AddURI(uris []string, options *opts.Options) (gid string, err error) {
+func (c *Client) AddURI(uris []string, options *Options) (gid string, err error) {
 	c.call(method.AddURI, c.makeParams(uris, options), &gid)
 	return
 }
 
-func (c *Client) AddTorrent(torrent *[]byte, uris *[]string, options *opts.Options) (gid string, err error) {
+func (c *Client) AddTorrent(torrent *[]byte, uris *[]string, options *Options) (gid string, err error) {
 	et := base64.StdEncoding.EncodeToString(*torrent)
 	err = c.call(method.AddTorrent, c.makeParams(et, uris, options), &gid)
 	return
 }
 
-func (c *Client) AddMetalink(metalink *[]byte, options *opts.Options) (gid []string, err error) {
+func (c *Client) AddMetalink(metalink *[]byte, options *Options) (gid []string, err error) {
 	em := base64.StdEncoding.EncodeToString(*metalink)
 	err = c.call(method.AddMetalink, c.makeParams(em, options), &gid)
 	return
@@ -133,22 +130,22 @@ func (c *Client) ChangeURI(gid string, fileIndex int, delURIs, addURIs *[]string
 	return
 }
 
-func (c *Client) GetOption(gid string) (options opts.Options, err error) {
+func (c *Client) GetOption(gid string) (options Options, err error) {
 	err = c.call(method.GetOption, c.makeParams(gid), &options)
 	return
 }
 
-func (c *Client) ChangeOption(gid string, options *opts.Options) (err error) {
+func (c *Client) ChangeOption(gid string, options *Options) (err error) {
 	err = c.call(method.ChangeOption, c.makeParams(gid, options), nil)
 	return
 }
 
-func (c *Client) GetGlobalOption() (options opts.Options, err error) {
+func (c *Client) GetGlobalOption() (options Options, err error) {
 	err = c.call(method.GetGlobalOption, c.makeParams(), &options)
 	return
 }
 
-func (c *Client) ChangeGlobalOption(options *opts.Options) (err error) {
+func (c *Client) ChangeGlobalOption(options *Options) (err error) {
 	err = c.call(method.ChangeGlobalOption, c.makeParams(options), nil)
 	return
 }
@@ -216,7 +213,7 @@ func (c *Client) makeParams(p ...any) []any {
 			if reflect.ValueOf(v).Len() != 0 {
 				params = append(params, v)
 			}
-		case *opts.Options:
+		case *Options:
 			if v != nil {
 				params = append(params, v)
 			}

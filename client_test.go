@@ -43,7 +43,7 @@ func TestClient(t *testing.T) {
 	})
 
 	t.Run("add uri with options", func(t *testing.T) {
-		op := client.Options
+		op := Options{}
 		op.Dir = "/tmp"
 
 		// the returned value does not include storage path information
