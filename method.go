@@ -1,0 +1,77 @@
+package ario
+
+type m struct {
+	AddURI               string
+	AddTorrent           string
+	AddMetalink          string
+	Remove               string
+	ForceRemove          string
+	Pause                string
+	PauseAll             string
+	ForcePause           string
+	ForcePauseAll        string
+	Unpause              string
+	UnpauseAll           string
+	TellStatus           string
+	GetURIs              string
+	GetFiles             string
+	GetPeers             string
+	GetServers           string
+	TellActive           string
+	TellWaiting          string
+	TellStopped          string
+	ChangePosition       string
+	ChangeURI            string
+	GetOption            string
+	ChangeOption         string
+	GetGlobalOption      string
+	ChangeGlobalOption   string
+	GetGlobalStat        string
+	PurgeDownloadResult  string
+	RemoveDownloadResult string
+	GetVersion           string
+	GetSessionInfo       string
+	Shutdown             string
+	ForceShutdown        string
+	SaveSession          string
+	Multicall            string
+	ListMethods          string
+}
+
+var method = &m{
+	AddURI:               "aria2.addUri",
+	AddTorrent:           "aria2.addTorrent",
+	AddMetalink:          "aria2.addMetalink",
+	Remove:               "aria2.remove",
+	ForceRemove:          "aria2.forceRemove",
+	Pause:                "aria2.pause",
+	PauseAll:             "aria2.pauseAll",
+	ForcePause:           "aria2.forcePause",
+	ForcePauseAll:        "aria2.forcePauseAll",
+	Unpause:              "aria2.unpause",
+	UnpauseAll:           "aria2.unpauseAll",
+	TellStatus:           "aria2.tellStatus",
+	GetURIs:              "aria2.getUris",
+	GetFiles:             "aria2.getFiles",
+	GetPeers:             "aria2.getPeers",
+	GetServers:           "aria2.getServers",
+	TellActive:           "aria2.tellActive",
+	TellWaiting:          "aria2.tellWaiting",
+	TellStopped:          "aria2.tellStopped",
+	ChangePosition:       "aria2.changePosition",
+	ChangeURI:            "aria2.changeUri",
+	GetOption:            "aria2.getOption",
+	ChangeOption:         "aria2.changeOption",
+	GetGlobalOption:      "aria2.getGlobalOption",
+	ChangeGlobalOption:   "aria2.changeGlobalOption",
+	GetGlobalStat:        "aria2.getGlobalStat",
+	PurgeDownloadResult:  "aria2.purgeDownloadResult",
+	RemoveDownloadResult: "aria2.removeDownloadResult",
+	GetVersion:           "aria2.getVersion",
+	GetSessionInfo:       "aria2.getSessionInfo",
+	Shutdown:             "aria2.shutdown",
+	ForceShutdown:        "aria2.forceShutdown",
+	SaveSession:          "aria2.saveSession",
+	Multicall:            "system.multicall",
+	ListMethods:          "system.listMethods",
+}
