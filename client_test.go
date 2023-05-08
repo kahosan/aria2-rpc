@@ -6,8 +6,8 @@ func TestClient(t *testing.T) {
 
 	t.Run("unsupported scheme", func(t *testing.T) {
 		_, err := NewClient("localhost:6800/jsonrpc", "")
-		if err != nil {
-			t.Fatal(err)
+		if err.Error() != "unsupported scheme: localhost" {
+			t.Fatal("unexpected scheme check error")
 		}
 	})
 
