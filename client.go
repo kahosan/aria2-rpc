@@ -125,7 +125,7 @@ func (c *Client) ChangePosition(gid string, pos int, how string) (err error) {
 	return
 }
 
-func (c *Client) ChangeURI(gid string, fileIndex int, delURIs, addURIs *[]string, position int) (err error) {
+func (c *Client) ChangeURI(gid string, fileIndex int, delURIs, addURIs *[]string, position ...int) (err error) {
 	err = c.call(method.ChangeURI, c.makeParams(gid, fileIndex, delURIs, addURIs, position), nil)
 	return
 }
@@ -209,7 +209,7 @@ func (c *Client) makeParams(p ...any) []any {
 
 	for _, u := range p {
 		switch v := u.(type) {
-		case []string, []byte:
+		case []string, []byte, []int:
 			if reflect.ValueOf(v).Len() != 0 {
 				params = append(params, v)
 			}
