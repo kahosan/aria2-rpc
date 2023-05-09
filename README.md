@@ -4,7 +4,6 @@ This is a Go client for the Aria2 JSON-RPC interface, providing a way to interac
 
 > **Note:** This library is still in development and is not yet ready for production use.
 
-
 ## Installation
 
 To install the package, run:
@@ -24,7 +23,8 @@ import ario "github.com/kahosan/aria2-rpc"
 Then create a new client with the `NewClient` function, passing in the host and token for the Aria2 instance:
 
 ```go
-client, err := ario.NewClient("http://localhost:6800/jsonrpc", "mytoken")
+client, err := ario.NewClient("http://localhost:6800/jsonrpc", "token")
+// client, err := ario.NewClient("ws://localhost:6800/jsonrpc", "token")
 if err != nil {
     // handle error
 }
