@@ -5,47 +5,54 @@ import (
 	"testing"
 
 	"github.com/kahosan/aria2-rpc/internal/resp"
+	"github.com/kahosan/aria2-rpc/internal/testutils"
 )
 
 func TestHTTPRPC(t *testing.T) {
-	c, err := NewCaller("http://localhost:6800/jsonrpc")
+	c, err := NewCaller(testutils.Arai2Uri("https://"))
 	if err != nil {
 		fmt.Println(err)
-		t.Errorf("NewCaller should not return error")
+		t.Fatal("NewCaller should not return error")
 	}
 
-	if c.Call == nil {
-		t.Errorf("Call function should not be nil")
-	}
-
-	t.Run("call getVersion", func(t *testing.T) {
+	t.Run("connect should not be error", func(t *testing.T) {
 		r := resp.Version{}
 		err = c.Call("aria2.getVersion", nil, &r)
 		if err != nil {
-			t.Errorf("getVersion failed: %v", err)
+			t.Fatal("get version failed: ", err)
 		}
 
 		t.Log(r)
 	})
+
+	t.Run("when reply is nil, error should not be returned.", func(t *testing.T) {
+		err = c.Call("aria2.getVersion", nil, nil)
+		if err != nil {
+			t.Fatal("get version failed: ", err)
+		}
+	})
 }
 
 func TestWSRPC(t *testing.T) {
-	c, err := NewCaller("ws://localhost:6800/jsonrpc")
+	c, err := NewCaller(testutils.Arai2Uri("ws://"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	if c.Call == nil {
-		t.Fatal("Call function should not be nil")
-	}
-
-	t.Run("call getVersion", func(t *testing.T) {
+	t.Run("connect should not be error", func(t *testing.T) {
 		r := resp.Version{}
 		err = c.Call("aria2.getVersion", nil, &r)
 		if err != nil {
-			t.Errorf("getVersion failed: %v", err)
+			t.Fatal("get version failed: ", err)
 		}
 
 		t.Log(r)
+	})
+
+	t.Run("when reply is nil, error should not be returned.", func(t *testing.T) {
+		err = c.Call("aria2.getVersion", nil, nil)
+		if err != nil {
+			t.Fatal("get version failed: ", err)
+		}
 	})
 }
