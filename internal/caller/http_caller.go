@@ -20,6 +20,11 @@ func (h *httpCaller) call(method string, params, reply any) error {
 
 	h.rc = rc
 
+	if reply == nil {
+		_, err := rc.Call(context.Background(), method, params)
+		return err
+	}
+
 	return rc.CallResult(context.Background(), method, params, reply)
 }
 
