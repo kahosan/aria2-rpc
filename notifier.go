@@ -2,6 +2,7 @@ package ario
 
 import (
 	"context"
+	"io"
 	"log"
 	"net/url"
 
@@ -35,7 +36,7 @@ const (
 	obc = "aria2.onBtDownloadComplete"
 )
 
-func (n *notifier) setNotifier(host *url.URL) error {
+func newNotifier(host *url.URL) (*notifier, error) {
 	switch host.Scheme {
 	case "https", "wss":
 		host.Scheme = "wss"
@@ -45,24 +46,23 @@ func (n *notifier) setNotifier(host *url.URL) error {
 
 	conn, _, err := websocket.DefaultDialer.Dial(host.String(), nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	n.conn = conn
-
-	return nil
+	return &notifier{
+		conn: conn,
+	}, nil
 }
 
-func (n *notifier) Listener() (*Notify, error) {
+func (n *notifier) Listener(ctx context.Context) (*Notify, error) {
 	r := make(map[string]chan string)
-	ctx, cancel := context.WithCancel(context.Background())
 
 	go func() {
 		defer func() {
-			cancel()
 			for _, v := range r {
 				close(v)
 			}
+			n.conn.Close()
 		}()
 
 		for {
@@ -72,9 +72,14 @@ func (n *notifier) Listener() (*Notify, error) {
 			default:
 			}
 
-			// read notifications from the connection
 			resp := &reply{}
+
+			// read notifications from the connection
 			if err := n.conn.ReadJSON(resp); err != nil {
+				if err == io.ErrUnexpectedEOF {
+					log.Println("unexpected EOF | if you are using nginx, please adjust the value of `proxy_read_timeout`")
+					return
+				}
 				log.Printf("reading websocket message: %v", err)
 				return
 			}
@@ -90,10 +95,7 @@ func (n *notifier) Listener() (*Notify, error) {
 
 	return &Notify{
 		r,
-		func() error {
-			cancel()
-			return n.conn.Close()
-		},
+		n.conn.Close,
 	}, nil
 }
 
