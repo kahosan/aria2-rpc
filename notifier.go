@@ -22,7 +22,7 @@ type notifier struct {
 }
 
 type Notify struct {
-	r     chan *reply
+	r     map[string]chan string
 	Close func() error
 }
 
@@ -54,11 +54,16 @@ func (n *notifier) setNotifier(host *url.URL) error {
 }
 
 func (n *notifier) Listener() (*Notify, error) {
-	r := make(chan *reply)
+	r := make(map[string]chan string)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	go func() {
-		defer close(r)
+		defer func() {
+			cancel()
+			for _, v := range r {
+				close(v)
+			}
+		}()
 
 		for {
 			select {
@@ -73,7 +78,13 @@ func (n *notifier) Listener() (*Notify, error) {
 				log.Printf("reading websocket message: %v", err)
 				return
 			}
-			r <- resp
+
+			for _, event := range resp.Params {
+				// only send when the channel exists
+				if ch, ok := r[resp.Method]; ok {
+					ch <- event.Gid
+				}
+			}
 		}
 	}()
 
@@ -86,41 +97,38 @@ func (n *notifier) Listener() (*Notify, error) {
 	}, nil
 }
 
-func (n *Notify) notifyFunc(method string) chan string {
-	gid := make(chan string)
+func (n *Notify) notifyFunc(method string) <-chan string {
+	if gid, ok := n.r[method]; ok {
+		return gid
+	}
 
-	go func() {
-		defer close(gid)
-		for v := range n.r {
-			if v.Method == method {
-				gid <- v.Params[0].Gid
-			}
-		}
-	}()
+	// if channel not exist, create it
+	gid := make(chan string)
+	n.r[method] = gid
 
 	return gid
 }
 
-func (n *Notify) Start() chan string {
+func (n *Notify) Start() <-chan string {
 	return n.notifyFunc(ods)
 }
 
-func (n *Notify) Pause() chan string {
+func (n *Notify) Pause() <-chan string {
 	return n.notifyFunc(odp)
 }
 
-func (n *Notify) Stop() chan string {
+func (n *Notify) Stop() <-chan string {
 	return n.notifyFunc(odt)
 }
 
-func (n *Notify) Complete() chan string {
+func (n *Notify) Complete() <-chan string {
 	return n.notifyFunc(odc)
 }
 
-func (n *Notify) Error() chan string {
+func (n *Notify) Error() <-chan string {
 	return n.notifyFunc(ode)
 }
 
-func (n *Notify) BtComplete() chan string {
+func (n *Notify) BtComplete() <-chan string {
 	return n.notifyFunc(obc)
 }
