@@ -2,7 +2,6 @@ package ario
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -186,11 +185,12 @@ func TestNotifyListener(t *testing.T) {
 	}
 	defer client.Close()
 
-	notify, err := client.NotifyListener()
+	ctx, stopLisenter := context.WithCancel(context.Background())
+	notify, err := client.NotifyListener(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer notify.Close()
+	defer stopLisenter()
 
 	gid, err := client.AddURI([]string{"https://releases.ubuntu.com/22.04.2/ubuntu-22.04.2-live-server-amd64.iso"}, nil)
 	if err != nil {
@@ -200,10 +200,8 @@ func TestNotifyListener(t *testing.T) {
 	// using coroutines to prevent blocking
 	go func() {
 		for v := range notify.Start() {
-			fmt.Println("task start: ", v)
 			if v == gid {
 				t.Log("task active: ", v)
-				return
 			}
 		}
 	}()
@@ -212,20 +210,31 @@ func TestNotifyListener(t *testing.T) {
 		for v := range notify.Pause() {
 			if v == gid {
 				t.Log("task pause: ", v)
-				return
+			}
+		}
+	}()
+
+	go func() {
+		for v := range notify.Stop() {
+			if v == gid {
+				t.Log("task stop: ", v)
 			}
 		}
 	}()
 
 	time.Sleep(time.Second * 2)
-	t.Log("pause task: ", gid)
 	err = client.Pause(gid)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	time.Sleep(time.Second * 2)
-	t.Log("remove task: ", gid)
+	err = client.Unpause(gid)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(time.Second * 2)
 	err = client.Remove(gid)
 	if err != nil {
 		t.Fatal(err)
