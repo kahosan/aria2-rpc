@@ -1,34 +1,26 @@
 package ario
 
-import "testing"
+import (
+	"context"
+	"fmt"
+	"reflect"
+	"testing"
+	"time"
+
+	"github.com/kahosan/aria2-rpc/internal/testutils"
+)
 
 func TestClient(t *testing.T) {
 
 	t.Run("unsupported scheme", func(t *testing.T) {
-		_, err := NewClient("localhost:6800/jsonrpc", "")
+		_, err := NewClient("localhost:6800/jsonrpc", "", false)
 		if err.Error() != "unsupported scheme: localhost" {
 			t.Fatal("unexpected scheme check error")
 		}
 	})
 
-	t.Run("http or https", func(t *testing.T) {
-		_, err := NewClient("http://localhost:6800/jsonrpc", "")
-		if err != nil {
-			t.Fatal(err)
-		}
-	})
-
-	t.Run("ws or wss", func(t *testing.T) {
-		_, err := NewClient("ws://localhost:6800/jsonrpc", "")
-		if err != nil {
-			t.Fatal(err)
-		}
-	})
-
-	url := "http://localhost:6800/jsonrpc"
-
 	// method test
-	client, err := NewClient(url, "")
+	client, err := NewClient(testutils.Arai2Uri("https://"), "", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,6 +32,12 @@ func TestClient(t *testing.T) {
 		}
 
 		t.Log(gid)
+
+		time.Sleep(time.Second)
+		err = client.Remove(gid)
+		if err != nil {
+			t.Fatal(err)
+		}
 	})
 
 	t.Run("add uri with options", func(t *testing.T) {
@@ -59,6 +57,107 @@ func TestClient(t *testing.T) {
 		// }
 
 		t.Log(gid)
+
+		time.Sleep(time.Second)
+		err = client.Remove(gid)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+	})
+
+	t.Run("gid status listener", func(t *testing.T) {
+		op := Options{}
+		op.Dir = "/tmp"
+		gid, err := client.AddURI([]string{"https://releases.ubuntu.com/22.04.2/ubuntu-22.04.2-live-server-amd64.iso"}, &op)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		statusChan := client.StatusListenerByPolling(ctx, gid)
+		for v := range statusChan {
+			switch v.Status {
+			case "active":
+				t.Log("task active")
+				pe := client.Pause(gid)
+				if pe != nil {
+					t.Fatal(pe)
+				}
+			case "waiting":
+				t.Log("task waiting")
+			case "paused":
+				t.Log("task paused")
+
+				// if you directly delete a task while it is in pause state, aria2 will complain
+				ue := client.Unpause(gid)
+				if ue != nil {
+					t.Fatal(ue)
+				}
+
+				re := client.Remove(gid)
+				if re != nil {
+					t.Fatal(re)
+				}
+
+			case "error":
+				t.Log("task error")
+				cancel()
+				return
+			case "complete":
+				t.Log("task complete")
+				cancel()
+				return
+			case "removed":
+				t.Log("task removed")
+				cancel()
+				return
+			}
+		}
+	})
+
+	t.Run("get uris", func(t *testing.T) {
+		gid, err := client.AddURI([]string{"https://releases.ubuntu.com/22.04.2/ubuntu-22.04.2-live-server-amd64.iso"}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		uris, err := client.GetURIs(gid)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		t.Log(uris)
+
+		time.Sleep(time.Second)
+		err = client.Remove(gid)
+		if err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("get files", func(t *testing.T) {
+		gid, err := client.AddURI([]string{"https://releases.ubuntu.com/22.04.2/ubuntu-22.04.2-live-server-amd64.iso"}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		t.Log(gid)
+
+		files, err := client.GetFiles(gid)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		t.Log(files)
+
+		time.Sleep(time.Second)
+		err = client.Remove(gid)
+		if err != nil {
+			t.Fatal(err)
+		}
 	})
 
 	t.Run("get version", func(t *testing.T) {
@@ -77,5 +176,107 @@ func TestClient(t *testing.T) {
 		}
 
 		t.Log(methods)
+	})
+}
+
+func TestNotifyListener(t *testing.T) {
+	client, err := NewClient(testutils.Arai2Uri("https://"), "", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+
+	notify, err := client.NotifyListener()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer notify.Close()
+
+	gid, err := client.AddURI([]string{"https://releases.ubuntu.com/22.04.2/ubuntu-22.04.2-live-server-amd64.iso"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// using coroutines to prevent blocking
+	go func() {
+		for v := range notify.Start() {
+			fmt.Println("task start: ", v)
+			if v == gid {
+				t.Log("task active: ", v)
+				return
+			}
+		}
+	}()
+
+	go func() {
+		for v := range notify.Pause() {
+			if v == gid {
+				t.Log("task pause: ", v)
+				return
+			}
+		}
+	}()
+
+	time.Sleep(time.Second * 2)
+	t.Log("pause task: ", gid)
+	err = client.Pause(gid)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	time.Sleep(time.Second * 2)
+	t.Log("remove task: ", gid)
+	err = client.Remove(gid)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMultiCall(t *testing.T) {
+
+	client, err := NewClient(testutils.Arai2Uri("https://"), "", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("parameter for empty", func(t *testing.T) {
+		_, err := client.MultiCall(nil)
+		if err == nil {
+			t.Fatal("unexpected parameter check error")
+		}
+	})
+
+	t.Run("call multi add uri", func(t *testing.T) {
+		t.Run("multicall", func(t *testing.T) {
+			mc1 := MultiCallMethod{
+				Name:   "aria2.addUri",
+				Params: []any{[]any{"https://releases.ubuntu.com/22.04.2/ubuntu-22.04.2-live-server-amd64.iso"}},
+			}
+			mc2 := MultiCallMethod{
+				Name:   "aria2.addUri",
+				Params: []any{[]any{"https://releases.ubuntu.com/22.04.2/ubuntu-22.04.2-live-server-amd64.iso"}},
+			}
+
+			result, err := client.MultiCall(&[]MultiCallMethod{mc1, mc2})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			for _, v := range result {
+				t.Log(v.([]any)[0].(string)) // gid
+
+				time.Sleep(time.Second)
+
+				// different methods will return different data structures. For details, please refer to the aria2 rpc documentation.
+				// https://aria2.github.io/manual/en/html/aria2c.html#methods
+
+				if reflect.ValueOf(v).Kind() == reflect.Slice {
+					err = client.Remove(v.([]any)[0].(string))
+					if err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+		})
 	})
 }
