@@ -10,31 +10,28 @@ type Caller struct {
 	Close func() error
 }
 
-func NewCaller(host string) (*Caller, error) {
-	u, err := url.Parse(host)
-	if err != nil {
-		return nil, err
-	}
-
+func NewCaller(host *url.URL) (*Caller, error) {
 	rpc := &Caller{}
 
-	switch u.Scheme {
+	switch host.Scheme {
 	case "http", "https":
-		h := &httpCaller{
-			host: host,
+		h, err := newHttpCaller(host.String())
+		if err != nil {
+			return nil, err
 		}
 
 		rpc.Call = h.call
 		rpc.Close = h.close
 	case "ws", "wss":
-		w := &wsCaller{
-			host: host,
+		w, err := newWsCaller(host.String())
+		if err != nil {
+			return nil, err
 		}
 
 		rpc.Call = w.call
 		rpc.Close = w.close
 	default:
-		return nil, fmt.Errorf("unsupported scheme: %s", u.Scheme)
+		return nil, fmt.Errorf("unsupported scheme: %s", host.Scheme)
 	}
 	return rpc, nil
 }

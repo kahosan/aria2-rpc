@@ -8,26 +8,30 @@ import (
 )
 
 type httpCaller struct {
-	host string
-	rc   *jrpc2.Client
+	host  string
+	rc    *jrpc2.Client
+	close func() error
+}
+
+func newHttpCaller(host string) (*httpCaller, error) {
+	ch := jhttp.NewChannel(host, nil)
+	rc := jrpc2.NewClient(ch, nil)
+
+	c := &httpCaller{
+		host:  host,
+		rc:    rc,
+		close: rc.Close,
+	}
+
+	return c, nil
 }
 
 // http call
 func (h *httpCaller) call(method string, params, reply any) error {
-	ch := jhttp.NewChannel(h.host, nil)
-	rc := jrpc2.NewClient(ch, nil)
-	defer rc.Close()
-
-	h.rc = rc
-
 	if reply == nil {
-		_, err := rc.Call(context.Background(), method, params)
+		_, err := h.rc.Call(context.Background(), method, params)
 		return err
 	}
 
-	return rc.CallResult(context.Background(), method, params, reply)
-}
-
-func (h *httpCaller) close() error {
-	return h.rc.Close()
+	return h.rc.CallResult(context.Background(), method, params, reply)
 }
