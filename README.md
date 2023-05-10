@@ -9,7 +9,7 @@ This is a Go client for the Aria2 JSON-RPC interface, providing a way to interac
 To install the package, run:
 
 ```bash
-go get github.com/kahosan/aria2-rpc
+go get -u github.com/kahosan/aria2-rpc
 ```
 
 ## Usage
@@ -23,8 +23,8 @@ import ario "github.com/kahosan/aria2-rpc"
 Then create a new client with the `NewClient` function, passing in the host and token for the Aria2 instance:
 
 ```go
-client, err := ario.NewClient("http://localhost:6800/jsonrpc", "token")
-// client, err := ario.NewClient("ws://localhost:6800/jsonrpc", "token")
+client, err := ario.NewClient("http://localhost:6800/jsonrpc", "token", false)
+// client, err := ario.NewClient("ws://localhost:6800/jsonrpc", "token", false)
 if err != nil {
     // handle error
 }
@@ -61,6 +61,41 @@ if err != nil {
     // handle error
 }
 fmt.Println(status)
+```
+
+### Listener
+
+You can also use the client to listen for events from Aria2. To do so, use the `NotifyListener` method to get an instance that has some events and return the channel with a value of gid.
+
+Please refer to this [document](https://aria2.github.io/manual/en/html/aria2c.html#notifications) for the supported notification events.
+
+```go
+// both HTTP and WebSocket protocols can be used, but WebSocket protocol connection is required
+// please refer to the events related to support in `notifier.go` file
+client, err := ario.NewClient("http://localhost:6800/jsonrpc", "token", true)
+if err != nil {
+    // handle error
+}
+
+ctx, stopListener := context.WithCancel(context.Background())
+notify, err := client.NotifyListener(ctx)
+if err != nil {
+    fmt.Println(err)
+    return
+}
+defer stopListener()
+
+gid, _ := client.AddURI([]string{"http://example.com/file.txt"}, nil)
+
+// return a channel whose value is GID 
+<-notify.Complete()
+
+// or
+for g := range notify.Complete() {
+    if g == gid {
+        // do something
+    }
+}
 ```
 
 Note that the methods take different parameters depending on the specific method being called. Refer to the [Aria2 documentation](https://aria2.github.io/manual/en/html/aria2c.html#methods) for details on each method.
