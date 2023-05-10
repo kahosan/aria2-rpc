@@ -98,6 +98,35 @@ for g := range notify.Complete() {
 }
 ```
 
+If you want to listen to multiple events at the same time
+
+```go
+ctx, stopListener := context.WithCancel(context.Background())
+notify, err := client.NotifyListener(ctx)
+if err != nil {
+    //
+}
+defer stopListener()
+
+events := ario.Events{
+    "aria2.onDownloadStart": func(gid string) {
+        fmt.Println("start", gid)
+    },
+    "aria2.onDownloadComplete": func(gid string) {
+        fmt.Println("complete", gid)
+    },
+    "aria2.onDownloadError": func(gid string) {
+        fmt.Println("error", gid)
+    },
+    "aria2.onDownloadPause": func(gid string) {
+        fmt.Println("pause", gid)
+    },
+}
+
+// not blocking
+notify.MultiListen(events)
+```
+
 ## License
 
 This library is licensed under the MIT License. See the LICENSE file for details.

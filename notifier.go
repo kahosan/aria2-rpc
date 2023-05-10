@@ -18,6 +18,8 @@ type Event struct {
 	Gid string `json:"gid"`
 }
 
+type Events = map[string]func(gid string)
+
 type notifier struct {
 	conn *websocket.Conn
 }
@@ -109,6 +111,16 @@ func (n *Notify) notifyFunc(method string) <-chan string {
 	n.r[method] = gid
 
 	return gid
+}
+
+func (n *Notify) MultiListen(events map[string]func(gid string)) {
+	for method, fn := range events {
+		go func(m string, f func(gid string)) {
+			for gid := range n.notifyFunc(m) {
+				f(gid)
+			}
+		}(method, fn)
+	}
 }
 
 func (n *Notify) Start() <-chan string {
