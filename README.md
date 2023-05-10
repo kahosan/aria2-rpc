@@ -63,6 +63,8 @@ if err != nil {
 fmt.Println(status)
 ```
 
+Note that the methods take different parameters depending on the specific method being called. Refer to the [Aria2 documentation](https://aria2.github.io/manual/en/html/aria2c.html#methods) for details on each method.
+
 ### Listener
 
 You can also use the client to listen for events from Aria2. To do so, use the `NotifyListener` method to get an instance that has some events and return the channel with a value of gid.
@@ -97,8 +99,6 @@ for g := range notify.Complete() {
     }
 }
 ```
-
-Note that the methods take different parameters depending on the specific method being called. Refer to the [Aria2 documentation](https://aria2.github.io/manual/en/html/aria2c.html#methods) for details on each method.
 
 ## License
 
