@@ -2,6 +2,7 @@ package caller
 
 import (
 	"fmt"
+	"net/url"
 	"testing"
 
 	"github.com/kahosan/aria2-rpc/internal/resp"
@@ -9,7 +10,8 @@ import (
 )
 
 func TestHTTPRPC(t *testing.T) {
-	c, err := NewCaller(testutils.Arai2Uri("https://"))
+	uri, _ := url.Parse(testutils.Arai2Uri("https://"))
+	c, err := NewCaller(uri)
 	if err != nil {
 		fmt.Println(err)
 		t.Fatal("NewCaller should not return error")
@@ -34,7 +36,8 @@ func TestHTTPRPC(t *testing.T) {
 }
 
 func TestWSRPC(t *testing.T) {
-	c, err := NewCaller(testutils.Arai2Uri("ws://"))
+	uri, _ := url.Parse(testutils.Arai2Uri("wss://"))
+	c, err := NewCaller(uri)
 	if err != nil {
 		t.Fatal(err)
 	}
