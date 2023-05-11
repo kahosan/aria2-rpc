@@ -73,8 +73,8 @@ func TestClient(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx, stopListen := context.WithCancel(context.Background())
+		defer stopListen()
 
 		statusChan := client.StatusListenerByPolling(ctx, gid)
 		for v := range statusChan {
@@ -103,15 +103,12 @@ func TestClient(t *testing.T) {
 
 			case "error":
 				t.Log("task error")
-				cancel()
 				return
 			case "complete":
 				t.Log("task complete")
-				cancel()
 				return
 			case "removed":
 				t.Log("task removed")
-				cancel()
 				return
 			}
 		}
