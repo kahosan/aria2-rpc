@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net/url"
+	"sync"
 
 	"github.com/gorilla/websocket"
 )
@@ -22,11 +23,13 @@ type Events = map[string]func(gid string)
 
 type notifier struct {
 	conn *websocket.Conn
+	mux  sync.Mutex
 }
 
 type Notify struct {
 	r     map[string]chan string
 	Close func() error
+	mux   *sync.Mutex
 }
 
 const (
@@ -88,7 +91,11 @@ func (n *notifier) Listener(ctx context.Context) (*Notify, error) {
 
 			for _, event := range resp.Params {
 				// only send when the channel exists
-				if ch, ok := r[resp.Method]; ok {
+				n.mux.Lock()
+				ch, ok := r[resp.Method]
+				n.mux.Unlock()
+
+				if ok {
 					ch <- event.Gid
 				}
 			}
@@ -98,17 +105,24 @@ func (n *notifier) Listener(ctx context.Context) (*Notify, error) {
 	return &Notify{
 		r,
 		n.conn.Close,
+		&n.mux,
 	}, nil
 }
 
 func (n *Notify) notifyFunc(method string) <-chan string {
-	if gid, ok := n.r[method]; ok {
+	n.mux.Lock()
+	gid, ok := n.r[method]
+	n.mux.Unlock()
+
+	if ok {
 		return gid
 	}
 
 	// if channel not exist, create it
-	gid := make(chan string)
+	n.mux.Lock()
+	gid = make(chan string)
 	n.r[method] = gid
+	n.mux.Unlock()
 
 	return gid
 }
