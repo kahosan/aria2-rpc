@@ -76,6 +76,7 @@ client, err := ario.NewClient("http://localhost:6800/jsonrpc", "token", true)
 if err != nil {
     // handle error
 }
+defer client.Close()
 
 notify, err := client.NotifyListener(context.Background())
 if err != nil {
