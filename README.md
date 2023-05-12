@@ -61,13 +61,13 @@ if err != nil {
 fmt.Println(status)
 ```
 
-Note that the methods take different parameters depending on the specific method being called. Refer to the [Aria2 documentation](https://aria2.github.io/manual/en/html/aria2c.html#methods) for details on each method.
+Note that the methods take different parameters depending on the specific method being called. Refer to the [Aria2 documentation](https://aria2.github.io/manual/en/html/aria2c.html#methods) for details on each method
 
 ### Listener
 
-You can also use the client to listen for events from Aria2. To do so, use the `NotifyListener` method to get an instance that has some events and return the channel with a value of gid.
+You can also use the client to listen for events from Aria2. To do so, use the `NotifyListener` method to get an instance that has some events and return the channel with a value of gid
 
-Please refer to this [document](https://aria2.github.io/manual/en/html/aria2c.html#notifications) for the supported notification events.
+Please refer to this [document](https://aria2.github.io/manual/en/html/aria2c.html#notifications) for the supported notification events
 
 ```go
 // both HTTP and WebSocket protocols can be used, but WebSocket protocol connection is required
@@ -77,13 +77,8 @@ if err != nil {
     // handle error
 }
 
-ctx, stopListener := context.WithCancel(context.Background())
-notify, err := client.NotifyListener(ctx)
-if err != nil {
-    fmt.Println(err)
-    return
-}
-defer stopListener()
+notify := client.NotifyListener(context.Background())
+defer notify.Close()
 
 gid, _ := client.AddURI([]string{"http://example.com/file.txt"}, nil)
 
@@ -98,33 +93,59 @@ for g := range notify.Complete() {
 }
 ```
 
-If you want to listen to multiple events at the same time
+Using the callback method:
 
 ```go
-ctx, stopListener := context.WithCancel(context.Background())
-notify, err := client.NotifyListener(ctx)
-if err != nil {
-    //
-}
-defer stopListener()
+notify := client.NotifyListener(context.Background())
+defer notify.Close()
 
-events := ario.Events{
-    "aria2.onDownloadStart": func(gid string) {
-        fmt.Println("start", gid)
+// blocking
+notify.ListenOnce(notifier.NotifyEvents.Complete, func(g string, stop func()) {
+    fmt.Println("Stop: ", g)
+    stop()
+})
+
+// subscribe to multiple at the same time
+wg := sync.WaitGroup{}
+wg.Add(1) // Any task is completed, the listener is closed
+
+go notify.ListenOnce(notifier.NotifyEvents.Start, func(g string, stop func()) {
+    fmt.Println("Start: ", g)
+    wg.Done()
+})
+
+go notify.ListenOnce(notifier.NotifyEvents.Pause, func(g string, stop func()) {
+    fmt.Println("Pause: ", g)
+    wg.Done()
+})
+
+go notify.ListenOnce(notifier.NotifyEvents.Stop, func(g string, stop func()) {
+    fmt.Println("Stop: ", g)
+    wg.Done()
+})
+
+wg.Wait()
+
+// if there is still blocked code, it is recommended to execute the `notify.Close` function first
+```
+
+If you want to listen to multiple events at the same time:
+
+```go
+tasks := notifier.Tasks{
+    notifier.NotifyEvents.Start: func(gid string) {
+        fmt.Println("aria2.onDownloadStart", gid)
     },
-    "aria2.onDownloadComplete": func(gid string) {
-        fmt.Println("complete", gid)
+    notifier.NotifyEvents.Pause: func(gid string) {
+        fmt.Println("aria2.onDownloadPause", gid)
     },
-    "aria2.onDownloadError": func(gid string) {
-        fmt.Println("error", gid)
-    },
-    "aria2.onDownloadPause": func(gid string) {
-        fmt.Println("pause", gid)
+    notifier.NotifyEvents.Stop: func(gid string) {
+        fmt.Println("aria2.onDownloadStop", gid)
     },
 }
 
-// not blocking
-notify.MultiListen(events)
+// non-blocking
+notify.ListenMultiple(tasks)
 ```
 
 ## License

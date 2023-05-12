@@ -11,13 +11,14 @@ import (
 
 	"github.com/kahosan/aria2-rpc/internal/caller"
 	"github.com/kahosan/aria2-rpc/internal/resp"
+	"github.com/kahosan/aria2-rpc/notifier"
 )
 
 type Client struct {
 	Call           func(method string, params, reply any) error
 	Close          func() error
 	token          string
-	NotifyListener func(ctx context.Context) (*Notify, error)
+	NotifyListener func(ctx context.Context) *notifier.Notify
 }
 
 func NewClient(host string, token string, notify bool) (*Client, error) {
@@ -35,13 +36,13 @@ func NewClient(host string, token string, notify bool) (*Client, error) {
 		Call:  c.Call,
 		Close: c.Close,
 		token: token,
-		NotifyListener: func(context.Context) (*Notify, error) {
-			return nil, fmt.Errorf("please set the notify parameter to true in the NewClient function")
+		NotifyListener: func(context.Context) *notifier.Notify {
+			panic("please set the notify parameter to true in the NewClient function")
 		},
 	}
 
 	if notify {
-		not, err := newNotifier(uri)
+		not, err := notifier.NewNotifier(uri)
 		if err != nil {
 			return nil, err
 		}
