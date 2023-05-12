@@ -1,4 +1,4 @@
-# Aria2 JSON-RPC Client With Go
+<h1 align="center">Ario</h1>
 
 This is a Go client for the Aria2 JSON-RPC interface
 
