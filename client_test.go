@@ -3,10 +3,12 @@ package ario
 import (
 	"context"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/kahosan/aria2-rpc/internal/testutils"
+	"github.com/kahosan/aria2-rpc/notifier"
 )
 
 func TestClient(t *testing.T) {
@@ -23,6 +25,7 @@ func TestClient(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer client.Close()
 
 	t.Run("add uri", func(t *testing.T) {
 		gid, err := client.AddURI([]string{"https://releases.ubuntu.com/22.04.2/ubuntu-22.04.2-live-server-amd64.iso"}, nil)
@@ -176,70 +179,138 @@ func TestClient(t *testing.T) {
 }
 
 func TestNotifyListener(t *testing.T) {
+
+	t.Run("if notify is false, the listener will not be created", func(t *testing.T) {
+		_, err := NewClient(testutils.Arai2Uri("https://"), "", false)
+		if err != nil {
+			t.Fatal("should error")
+		}
+	})
+
 	client, err := NewClient(testutils.Arai2Uri("https://"), "", true)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer client.Close()
 
-	ctx, stopLisenter := context.WithCancel(context.Background())
-	notify, err := client.NotifyListener(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer stopLisenter()
-
-	gid, err := client.AddURI([]string{"https://releases.ubuntu.com/22.04.2/ubuntu-22.04.2-live-server-amd64.iso"}, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// using coroutines to prevent blocking
-	go func() {
-		for v := range notify.Start() {
-			if v == gid {
-				t.Log("task active: ", v)
-			}
+	t.Run("if notify is true, the listener will be created", func(t *testing.T) {
+		notify, err := client.NotifyListener(context.Background())
+		if err != nil {
+			t.Fatal(err)
 		}
-	}()
+		defer notify.Close()
 
-	go func() {
-		for v := range notify.Pause() {
-			if v == gid {
-				t.Log("task pause: ", v)
-			}
+		gid, err := client.AddURI([]string{"https://releases.ubuntu.com/22.04.2/ubuntu-22.04.2-live-server-amd64.iso"}, nil)
+		if err != nil {
+			t.Fatal(err)
 		}
-	}()
 
-	go func() {
-		for v := range notify.Stop() {
-			if v == gid {
-				t.Log("task stop: ", v)
+		var wg sync.WaitGroup
+		wg.Add(1)
+		// using coroutines to prevent blocking
+		go func() {
+			for v := range notify.Start() {
+				if v == gid {
+					t.Log("task start: ", v)
+				}
 			}
+		}()
+
+		go func() {
+			for v := range notify.Pause() {
+				if v == gid {
+					t.Log("task pause: ", v)
+				}
+			}
+		}()
+
+		go func() {
+			for v := range notify.Stop() {
+				if v == gid {
+					t.Log("task stop: ", v)
+					wg.Done()
+				}
+			}
+		}()
+
+		time.Sleep(time.Second)
+		err = client.Pause(gid)
+		if err != nil {
+			t.Fatal(err)
 		}
-	}()
 
-	time.Sleep(time.Second * 2)
-	err = client.Pause(gid)
-	if err != nil {
-		t.Fatal(err)
-	}
+		time.Sleep(time.Second)
+		err = client.Unpause(gid)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	time.Sleep(time.Second * 2)
-	err = client.Unpause(gid)
-	if err != nil {
-		t.Fatal(err)
-	}
+		time.Sleep(time.Second)
+		err = client.Remove(gid)
+		if err != nil {
+			t.Fatal(err)
+		}
 
-	time.Sleep(time.Second * 2)
-	err = client.Remove(gid)
-	if err != nil {
-		t.Fatal(err)
-	}
+		wg.Wait()
+	})
+
+	t.Run("multiple Listen once tests", func(t *testing.T) {
+		notify, err := client.NotifyListener(context.Background())
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer notify.Close()
+
+		gid, err := client.AddURI([]string{"https://releases.ubuntu.com/22.04.2/ubuntu-22.04.2-live-server-amd64.iso"}, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go notify.ListenOnce(notifier.NotifyEvents.Start, func(g string, stop func()) {
+			if g == gid {
+				t.Log("start: ", gid)
+			}
+		})
+
+		go notify.ListenOnce(notifier.NotifyEvents.Pause, func(g string, stop func()) {
+			if g == gid {
+				t.Log("pause: ", gid)
+			}
+		})
+
+		go notify.ListenOnce(notifier.NotifyEvents.Stop, func(g string, stop func()) {
+			if g == gid {
+				t.Log("stop: ", gid)
+			}
+			wg.Done()
+		})
+
+		time.Sleep(time.Second)
+		err = client.Pause(gid)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		time.Sleep(time.Second)
+		err = client.Unpause(gid)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		time.Sleep(time.Second)
+		err = client.Remove(gid)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		wg.Wait()
+	})
+
 }
 
 func TestMultiCall(t *testing.T) {
-
 	client, err := NewClient(testutils.Arai2Uri("https://"), "", false)
 	if err != nil {
 		t.Fatal(err)
