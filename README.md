@@ -77,7 +77,10 @@ if err != nil {
     // handle error
 }
 
-notify := client.NotifyListener(context.Background())
+notify, err := client.NotifyListener(context.Background())
+if err != nil {
+    //
+}
 defer notify.Close()
 
 gid, _ := client.AddURI([]string{"http://example.com/file.txt"}, nil)
@@ -96,7 +99,10 @@ for g := range notify.Complete() {
 Using the callback method:
 
 ```go
-notify := client.NotifyListener(context.Background())
+notify, err := client.NotifyListener(context.Background())
+if err != nil {
+    //
+}
 defer notify.Close()
 
 // blocking

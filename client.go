@@ -18,7 +18,7 @@ type Client struct {
 	Call           func(method string, params, reply any) error
 	Close          func() error
 	token          string
-	NotifyListener func(ctx context.Context) *notifier.Notify
+	NotifyListener func(ctx context.Context) (*notifier.Notify, error)
 }
 
 func NewClient(host string, token string, notify bool) (*Client, error) {
@@ -36,13 +36,13 @@ func NewClient(host string, token string, notify bool) (*Client, error) {
 		Call:  c.Call,
 		Close: c.Close,
 		token: token,
-		NotifyListener: func(context.Context) *notifier.Notify {
-			panic("please set the notify parameter to true in the NewClient function")
+		NotifyListener: func(context.Context) (*notifier.Notify, error) {
+			return nil, fmt.Errorf("please set the notify parameter to true in the NewClient function")
 		},
 	}
 
 	if notify {
-		not, err := notifier.NewNotifier(uri)
+		not := notifier.NewNotifier(uri)
 		if err != nil {
 			return nil, err
 		}

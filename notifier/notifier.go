@@ -32,7 +32,7 @@ type ne struct {
 }
 
 type notifier struct {
-	conn *websocket.Conn
+	host *url.URL
 }
 
 type Notify struct {
@@ -49,25 +49,25 @@ var NotifyEvents = &ne{
 	BtComplete: "aria2.onBtDownloadComplete",
 }
 
-func NewNotifier(host *url.URL) (*notifier, error) {
-	switch host.Scheme {
+func NewNotifier(host *url.URL) *notifier {
+	return &notifier{
+		host,
+	}
+}
+
+func (n *notifier) Listener(c context.Context) (*Notify, error) {
+	switch n.host.Scheme {
 	case "https", "wss":
-		host.Scheme = "wss"
+		n.host.Scheme = "wss"
 	case "http", "ws":
-		host.Scheme = "ws"
+		n.host.Scheme = "ws"
 	}
 
-	conn, _, err := websocket.DefaultDialer.Dial(host.String(), nil)
+	conn, _, err := websocket.DefaultDialer.Dial(n.host.String(), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return &notifier{
-		conn: conn,
-	}, nil
-}
-
-func (n *notifier) Listener(c context.Context) *Notify {
 	r := sync.Map{}
 	ctx, cancel := context.WithCancel(c)
 
@@ -83,7 +83,7 @@ func (n *notifier) Listener(c context.Context) *Notify {
 				close(value.(chan string))
 				return true
 			})
-			n.conn.Close()
+			conn.Close()
 		}()
 
 		for {
@@ -95,7 +95,7 @@ func (n *notifier) Listener(c context.Context) *Notify {
 
 			resp := &reply{}
 			// read notifications from the connection
-			if err := n.conn.ReadJSON(resp); err != nil {
+			if err := conn.ReadJSON(resp); err != nil {
 				if err == io.ErrUnexpectedEOF {
 					log.Println("unexpected EOF | if you are using nginx, please adjust the value of `proxy_read_timeout`")
 					return
@@ -119,7 +119,7 @@ func (n *notifier) Listener(c context.Context) *Notify {
 	return &Notify{
 		&r,
 		cancel,
-	}
+	}, nil
 }
 
 func (n *Notify) notifyFunc(method string) <-chan string {
