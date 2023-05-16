@@ -183,6 +183,13 @@ func TestNotifyListener(t *testing.T) {
 		}
 
 		notify.ListenMultiple(task)
+
+		time.Sleep(time.Second)
+		err = client.Remove(gid)
+		if err != nil {
+			t.Fatal(err)
+		}
+
 		wg.Wait()
 	})
 }
