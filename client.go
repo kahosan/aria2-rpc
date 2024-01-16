@@ -43,10 +43,6 @@ func NewClient(host string, token string, notify bool) (*Client, error) {
 
 	if notify {
 		not := notifier.NewNotifier(uri)
-		if err != nil {
-			return nil, err
-		}
-
 		client.NotifyListener = not.Listener
 	}
 
