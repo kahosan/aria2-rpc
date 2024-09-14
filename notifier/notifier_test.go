@@ -24,7 +24,12 @@ func TestNotifyListener(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer client.Close()
+	defer func() {
+		err = client.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}()
 
 	t.Run("if notify is true, the listener will be created", func(t *testing.T) {
 		notify, err := client.NotifyListener(context.Background())
