@@ -82,7 +82,7 @@ func (c *Client) StatusListenerByPolling(ctx context.Context, gid string) (statu
 }
 
 func (c *Client) AddURI(uris []string, options *Options) (gid string, err error) {
-	c.Call(method.AddURI, c.makeParams(uris, options), &gid)
+	err = c.Call(method.AddURI, c.makeParams(uris, options), &gid)
 	return
 }
 
@@ -247,7 +247,7 @@ func (c *Client) MultiCall(methods *[]MultiCallMethod) (result []any, err error)
 		return nil, fmt.Errorf("invalid parameter")
 	}
 
-	c.Call(method.Multicall, c.makeParams(methods), &result)
+	err = c.Call(method.Multicall, c.makeParams(methods), &result)
 	return
 }
 
